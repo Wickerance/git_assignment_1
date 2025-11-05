@@ -1,0 +1,6 @@
+﻿fastapi
+uvicorn[standard]
+pydantic
+sqlalchemy
+psycopg2-binary
+# Docker fix to refresh context
