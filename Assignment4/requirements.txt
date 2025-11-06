@@ -1,0 +1,11 @@
+fastapi>=0.104.1
+uvicorn[standard]>=0.23.2
+SQLAlchemy>=2.0.21
+asyncpg>=0.28.0
+psycopg2-binary
+# 强制指定 Passlib 和 bcrypt 的版本
+passlib[bcrypt]>=1.7.4 
+bcrypt>=4.1.2
+cryptography>=41.0.4
+email-validator
+python-jose
