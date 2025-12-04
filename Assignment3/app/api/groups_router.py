@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from typing import List
 from ..db.database import get_db
 from ..db import schemas
-from ..services import student_service 
+# Removed unused import: student_service
 from ..services import group_service
 
 router = APIRouter()

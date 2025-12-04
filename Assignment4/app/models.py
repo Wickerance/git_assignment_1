@@ -1,32 +1,33 @@
+# Assignment4/app/models.py
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 from app.database import Base
 
-# 用户模型
+# Модель пользователя
 class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, index=True, nullable=False)
-    # 存储哈希密码
+    # Хранение хешированного пароля
     hashed_password = Column(String, nullable=False)
     
-    # 定义与 LoginHistory 的关系
+    # Связь с историей входов
     history = relationship("LoginHistory", back_populates="user")
 
-# 登录历史模型
+# Модель истории входов
 class LoginHistory(Base):
     __tablename__ = "login_history"
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     
-    # 记录用户登录时使用的浏览器/操作系统信息
+    # Информация о браузере/ОС пользователя
     user_agent = Column(Text, nullable=True) 
     
-    # 记录登录时间
-    login_time = Column(DateTime, default=datetime.utcnow, nullable=False)
+    # Время входа (используем UTC)
+    login_time = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
-    # 定义与 User 的关系
+    # Связь с пользователем
     user = relationship("User", back_populates="history")

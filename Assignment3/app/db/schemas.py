@@ -1,6 +1,6 @@
 # Assignment3/app/db/schemas.py
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional
 
 # --- Базовые модели (Base Models) ---
 
@@ -33,7 +33,8 @@ class Group(GroupBase):
     
     class Config:
         # Разрешает чтение данных из ORM объектов (SQLAlchemy моделей)
-        orm_mode = True
+        # Pydantic v2 update: orm_mode replaced by from_attributes
+        from_attributes = True
 
 class Student(StudentBase):
     """Схема для вывода информации о студенте"""
@@ -43,7 +44,7 @@ class Student(StudentBase):
     group: Optional[Group] = None
     
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # --- Модель для операций с группами ---
 

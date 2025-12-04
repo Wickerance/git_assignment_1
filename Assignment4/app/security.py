@@ -1,106 +1,104 @@
+# Assignment4/app/security.py
+import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
-# 导入 FastAPI 认证相关依赖
-from fastapi import Depends, HTTPException
+# Импорт зависимостей FastAPI
+from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from starlette import status
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
 
-# 配置 OAuth2 方案
+# Импорт локальных модулей
+from .database import get_async_session
+from .models import User
+
+# Настройка схемы OAuth2
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
-# 配置密码哈希上下文
+# Настройка контекста хеширования паролей
 pwd_context = CryptContext(
     schemes=["pbkdf2_sha256"], 
     deprecated="auto"
 )
 
 # --------------------------------------------------
-# JWT 配置 (已更新)
+# Конфигурация JWT
 # --------------------------------------------------
-SECRET_KEY = "YOUR_SUPER_SECRET_KEY" 
+# ВАЖНО: Читаем секретный ключ из переменных окружения для безопасности
+SECRET_KEY = os.getenv("SECRET_KEY", "change_this_to_a_secure_key_in_production")
 ALGORITHM = "HS256"
-# 短期 Access Token (30 分钟)
+
+# Срок действия Access Token (30 минут)
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
-# 长期 Refresh Token (7 天)
+# Срок действия Refresh Token (7 дней)
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 
 # --------------------------------------------------
-# 数据库/用户模拟函数 (将在后续步骤中替换为真实 DB 查询)
-# --------------------------------------------------
-
-async def get_user_by_id(user_id: int):
-    """模拟根据 ID 查找用户"""
-    # ⚠️ 在实际应用中，您将使用 AsyncSession 和 ORM 查询。
-    if user_id == 1:
-        # 假设 ID 为 1 的用户是我们在注册时创建的那个
-        return {"id": 1, "email": "final_success_pbkdf2@example.com"} 
-    return None
-
-# --------------------------------------------------
-# 密码处理
+# Работа с паролями
 # --------------------------------------------------
 
 def hash_password(password: str) -> str:
-    """哈希密码"""
+    """Хеширование пароля."""
     return pwd_context.hash(password)
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """验证密码"""
+    """Проверка пароля."""
     return pwd_context.verify(plain_password, hashed_password)
 
 # --------------------------------------------------
-# Token 生成
+# Генерация токенов
 # --------------------------------------------------
 
 def create_access_token(data: dict) -> str:
-    """创建 JWT Access Token (短期)"""
+    """Создание JWT Access Token (короткоживущий)."""
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     
-    # 负载中包含过期时间、主题(user_id)和类型 'access'
+    # В payload добавляем срок действия, ID пользователя и тип 'access'
     to_encode.update({"exp": expire, "sub": str(data["user_id"]), "type": "access"})
     
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
 def create_refresh_token(data: dict) -> str:
-    """创建 JWT Refresh Token (长期)"""
+    """Создание JWT Refresh Token (долгоживущий)."""
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
     
-    # 负载中包含过期时间、主题(user_id)和类型 'refresh'
+    # В payload добавляем срок действия, ID пользователя и тип 'refresh'
     to_encode.update({"exp": expire, "sub": str(data["user_id"]), "type": "refresh"})
     
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
 # --------------------------------------------------
-# Token 验证与解码
+# Валидация и декодирование токенов
 # --------------------------------------------------
 
 def decode_token(token: str) -> Optional[Dict[str, Any]]:
     """
-    解码 JWT Token 并验证其有效性（签名、过期时间）。
-    如果成功则返回 payload，否则返回 None。
+    Декодирует JWT токен и проверяет его валидность.
+    Возвращает payload при успехе, иначе None.
     """
     try:
-        # 解码并验证签名、过期时间
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         return payload
     except JWTError:
-        # Token 无效（如过期、签名不匹配）
         return None
 
 # --------------------------------------------------
-# 依赖注入函数
+# Зависимости (Dependencies)
 # --------------------------------------------------
 
-async def get_current_user(token: str = Depends(oauth2_scheme)):
+async def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_async_session)
+) -> User:
     """
-    依赖注入函数，用于验证 Access Token 并获取当前用户。
+    Зависимость для проверки Access Token и получения текущего пользователя из БД.
     """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -108,17 +106,21 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         headers={"WWW-Authenticate": "Bearer"},
     )
     
-    # 1. 解码和验证令牌
+    # 1. Декодируем токен
     payload = decode_token(token)
     
-    # 2. 检查载荷是否存在、包含 'sub' 字段 (用户 ID) 且类型为 'access'
+    # 2. Проверяем наличие 'sub' (ID) и правильный тип токена ('access')
     if payload is None or "sub" not in payload or payload.get("type") != "access":
         raise credentials_exception
         
-    user_id = int(payload.get("sub"))
+    try:
+        user_id = int(payload.get("sub"))
+    except (ValueError, TypeError):
+        raise credentials_exception
     
-    # 3. 查找用户
-    user = await get_user_by_id(user_id) 
+    # 3. Ищем пользователя в базе данных
+    result = await db.execute(select(User).filter(User.id == user_id))
+    user = result.scalars().first()
     
     if user is None:
         raise credentials_exception

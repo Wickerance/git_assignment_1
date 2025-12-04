@@ -1,73 +1,90 @@
-﻿# OOP Shapes
+﻿"""
+Модуль, реализующий иерархию геометрических фигур.
+"""
 import math
 
 class Shape:
-    # Базовый класс для геометрических фигур
+    """Базовый класс для геометрических фигур."""
+    
     def area(self):
+        """Вычисляет площадь фигуры."""
         raise NotImplementedError("Метод площади должен быть реализован.")
     
     def perimeter(self):
+        """Вычисляет периметр фигуры."""
         raise NotImplementedError("Метод периметра должен быть реализован.")
         
     def is_area_greater(self, other):
+        """Сравнивает площадь с другой фигурой."""
         return self.area() > other.area()
 
     def is_perimeter_greater(self, other):
+        """Сравнивает периметр с другой фигурой."""
         return self.perimeter() > other.perimeter()
 
 class Circle(Shape):
+    """Класс, описывающий круг."""
+    
     def __init__(self, radius):
-        self.r = radius
+        self.radius = radius
         
     def area(self):
-        return math.pi * self.r ** 2
+        return math.pi * self.radius ** 2
         
     def perimeter(self):
-        return 2 * math.pi * self.r
+        return 2 * math.pi * self.radius
 
 class Rectangle(Shape):
+    """Класс, описывающий прямоугольник."""
+    
     def __init__(self, width, height):
-        self.w = width
-        self.h = height
+        self.width = width
+        self.height = height
         
     def area(self):
-        return self.w * self.h
+        return self.width * self.height
         
     def perimeter(self):
-        return 2 * (self.w + self.h)
+        return 2 * (self.width + self.height)
 
 class Square(Rectangle):
+    """Класс, описывающий квадрат."""
+    
     def __init__(self, side):
-        super().__init__(side, side) # Наследует от Rectangle
+        super().__init__(side, side)  # Наследует от Rectangle
 
 class Triangle(Shape):
-    # Используем 3 стороны для формулы Герона
-    def __init__(self, a, b, c):
-        self.a = a
-        self.b = b
-        self.c = c
+    """Класс, описывающий треугольник."""
+    
+    def __init__(self, side_a, side_b, side_c):
+        self.side_a = side_a
+        self.side_b = side_b
+        self.side_c = side_c
         
     def area(self):
-        s = self.perimeter() / 2 # Полупериметр
-        return math.sqrt(s * (s - self.a) * (s - self.b) * (s - self.c))
+        # Используем формулу Герона
+        semi_perimeter = self.perimeter() / 2
+        return math.sqrt(
+            semi_perimeter * (semi_perimeter - self.side_a) * (semi_perimeter - self.side_b) * (semi_perimeter - self.side_c)
+        )
         
     def perimeter(self):
-        return self.a + self.b + self.c
+        return self.side_a + self.side_b + self.side_c
 
 # Тестирование
 if __name__ == '__main__':
     print("--- Тестирование фигур ---")
-    r = Rectangle(5, 10)
-    s = Square(6)
-    c = Circle(4)
-    t = Triangle(3, 4, 5) # Прямоугольный треугольник
+    rectangle = Rectangle(5, 10)
+    square = Square(6)
+    circle = Circle(4)
+    triangle = Triangle(3, 4, 5)  # Прямоугольный треугольник
 
-    print(f"Прямоугольник: S={r.area():.2f}, P={r.perimeter():.2f}")
-    print(f"Квадрат: S={s.area():.2f}, P={s.perimeter():.2f}")
-    print(f"Круг: S={c.area():.2f}, P={c.perimeter():.2f}")
-    print(f"Треугольник: S={t.area():.2f}, P={t.perimeter():.2f}")
+    print(f"Прямоугольник: S={rectangle.area():.2f}, P={rectangle.perimeter():.2f}")
+    print(f"Квадрат: S={square.area():.2f}, P={square.perimeter():.2f}")
+    print(f"Круг: S={circle.area():.2f}, P={circle.perimeter():.2f}")
+    print(f"Треугольник: S={triangle.area():.2f}, P={triangle.perimeter():.2f}")
 
     # Тестирование сравнения
     print(f"\nСравнение:")
-    print(f"Квадрат > Прямоугольник (по площади)? {s.is_area_greater(r)}")
-    print(f"Круг > Треугольник (по периметру)? {c.is_perimeter_greater(t)}")
+    print(f"Квадрат > Прямоугольник (по площади)? {square.is_area_greater(rectangle)}")
+    print(f"Круг > Треугольник (по периметру)? {circle.is_perimeter_greater(triangle)}")

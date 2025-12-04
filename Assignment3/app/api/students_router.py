@@ -2,9 +2,9 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from db.database import get_db
-from db import schemas
-from services import student_service 
+from ..db.database import get_db
+from ..db import schemas
+from ..services import student_service 
 
 router = APIRouter()
 

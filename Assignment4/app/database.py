@@ -1,3 +1,4 @@
+# Assignment4/app/database.py
 import os
 import asyncio
 from sqlalchemy import text
@@ -5,89 +6,85 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.exc import OperationalError
 
-# --- 1. 配置常量和连接字符串 ---
-# 从环境变量获取数据库连接信息 (必须匹配 docker-compose.yml 中设置的变量名)
-DB_USER = os.environ.get("POSTGRES_USER", "postgres")
-DB_PASSWORD = os.environ.get("POSTGRES_PASSWORD", "postgres")
-DB_NAME = os.environ.get("POSTGRES_DB", "authdb")
-DB_HOST = os.environ.get("DB_HOST", "assignment4-db") # 默认值应为 docker-compose 服务名
+# --- 1. Конфигурация и строка подключения ---
+# Получение настроек БД из переменных окружения (должны совпадать с docker-compose.yml)
+DB_USER = os.environ.get("POSTGRES_USER", "auth_user")
+DB_PASSWORD = os.environ.get("POSTGRES_PASSWORD", "auth_secure_pass")
+DB_NAME = os.environ.get("POSTGRES_DB", "auth_service_db")
+DB_HOST = os.environ.get("DB_HOST", "assignment4-db") # Имя сервиса в docker-compose
 DB_PORT = os.environ.get("DB_PORT", "5432")
 
-# 构建异步 PostgreSQL 连接字符串 (使用 asyncpg 驱动)
+# Формирование URL подключения для драйвера asyncpg
 DATABASE_URL = f"postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
-# --- 2. 基础模型类 ---
+# --- 2. Базовый класс моделей ---
 class Base(DeclarativeBase):
-    """所有 SQLAlchemy 模型的基类"""
+    """Базовый класс для всех моделей SQLAlchemy"""
     pass
 
-# --- 3. 数据库引擎和会话设置 ---
+# --- 3. Настройка движка и сессии ---
 
-# 创建异步引擎
+# Создание асинхронного движка
 engine = create_async_engine(
     DATABASE_URL, 
-    echo=False # 生产环境中建议设为 False
+    echo=False # В продакшене лучше ставить False
 )
 
-# 创建异步会话工厂
+# Фабрика асинхронных сессий
 AsyncSessionLocal = async_sessionmaker(
     autocommit=False,
     autoflush=False,
     bind=engine,
     class_=AsyncSession,
-    expire_on_commit=False, # 避免在提交后导致懒加载问题
+    expire_on_commit=False, # Избегаем проблем с lazy load после коммита
 )
 
-# --- 4. FastAPI 依赖注入函数 ---
+# --- 4. Зависимость FastAPI (Dependency) ---
 
 async def get_async_session() -> AsyncSession:
     """
-    FastAPI 依赖项函数：提供一个异步数据库会话给路由处理程序。
+    Зависимость FastAPI: предоставляет асинхронную сессию БД для обработчиков роутов.
     """
     async with AsyncSessionLocal() as session:
         try:
             yield session
         finally:
-            # 异步关闭会话
+            # Асинхронное закрытие сессии
             await session.close() 
 
-# --- 5. 数据库初始化函数 (供 main.py 中的 lifespan 调用) ---
+# --- 5. Инициализация БД (вызывается из lifespan в main.py) ---
 
 async def init_db():
     """
-    尝试连接数据库并创建所有表，包含重试逻辑以应对 DB 启动延迟。
+    Попытка подключения к БД и создание таблиц.
+    Включает логику повторных попыток (retry) для ожидания запуска БД.
     """
     MAX_RETRIES = 10
-    RETRY_DELAY = 3   # 秒
+    RETRY_DELAY = 3   # секунды
     
-    # 引入重试逻辑
     for attempt in range(MAX_RETRIES):
         try:
-            print(f"Database initialization attempt {attempt + 1}/{MAX_RETRIES}...")
+            print(f"Попытка инициализации БД {attempt + 1}/{MAX_RETRIES}...")
             
             async with engine.begin() as conn:
-                # 1. 检查连接是否成功
+                # 1. Проверка соединения
                 await conn.execute(text("SELECT 1"))
                 
-                # 2. 导入所有模型，确保 Base 知道所有表
-                # 注意：如果您的 main.py 已经导入了 models，则无需在此处再次导入
-                # 推荐在 main.py 或其他主入口点导入一次 models。
-                
-                # 3. 创建所有未存在的表
+                # 2. Создание всех таблиц, которые еще не существуют
                 await conn.run_sync(Base.metadata.create_all)
                 
-            print("Database initialization complete.")
-            return # 成功，退出函数
+            print("БД успешно инициализирована.")
+            return # Успех, выход из функции
         
         except OperationalError as e:
-            # OperationalError 通常表示连接被拒绝或数据库不可用
+            # OperationalError обычно означает, что БД еще не готова
             if attempt < MAX_RETRIES - 1:
-                print(f"Database connection failed: {e}. Retrying in {RETRY_DELAY} seconds...")
+                print(f"Ошибка подключения: {e}. Повтор через {RETRY_DELAY} сек...")
                 await asyncio.sleep(RETRY_DELAY)
             else:
-                print("Max retries reached. Database initialization failed permanently.")
-                raise # 达到最大重试次数，抛出异常
+                print("Превышено количество попыток. Не удалось инициализировать БД.")
+                raise # Пробрасываем исключение после всех попыток
         
         except Exception as e:
-            print(f"An unexpected error occurred during database initialization: {e}")
-            raise # 处理其他类型的异常
+            print(f"Неожиданная ошибка при инициализации БД: {e}")
+            raise # Пробрасываем остальные ошибки

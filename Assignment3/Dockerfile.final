@@ -1,23 +1,23 @@
 FROM python:3.11-slim-buster
 
-# 1. 安装必要的系统依赖 
+# 1. Install necessary system dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends gcc python3-dev libpq-dev && \
     rm -rf /var/lib/apt/lists/*
 
-# 2. 设置工作目录。
+# 2. Set working directory
 WORKDIR /usr/src/app
 
-# 3. 复制依赖文件并安装 
+# 3. Copy requirements and install
 COPY requirements.txt .
-# ********* 强制修改：在 RUN 命令中添加一个注释，保证步骤 4 的缓存失效 *********
-RUN pip install --no-cache-dir -r requirements.txt # FORCE REBUILD 20251106_1930
+# FORCE REBUILD 20251106_1930 - Ensure cache invalidation for pip install
+RUN pip install --no-cache-dir -r requirements.txt
 
-# 4. 复制应用程序代码 
+# 4. Copy application code
 COPY . .
 
-# 5. 暴露端口
+# 5. Expose port
 EXPOSE 8000
 
-# 6. 启动 Gunicorn/Uvicorn 服务 
+# 6. Start Gunicorn/Uvicorn service
 CMD ["gunicorn", "app.main:app", "--bind", "0.0.0.0:8000", "-k", "uvicorn.workers.UvicornWorker", "--workers", "4"]

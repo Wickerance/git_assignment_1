@@ -1,66 +1,50 @@
-# 🌟 注意：已移除 version 字段以避免警告
 services:
-  # --- 应用服务 (FastAPI) ---
-  auth_app:
-    # 🌟 指向新的 Dockerfile 名称
+  # --- Application Service (FastAPI) ---
+  student_app:
+    # Points to your specific Dockerfile
     build:
       context: .
       dockerfile: Dockerfile.final
       
-    container_name: assignment4-auth-app
+    container_name: assignment3-student-app
     
-    # 🌟 确保依赖关系
+    # Ensure DB is ready before starting app
     depends_on:
       - db
-      - redis
       
-    # 端口映射
+    # Port mapping: Host:Container
     ports:
       - "8000:8000"
       
     restart: always
     
-    # 🌟 应用程序连接 DB/Redis 的环境变量
+    # Environment variables (Matching .env)
     environment:
       DB_HOST: db
-      DB_NAME: auth_db
-      DB_USER: auth_user
-      DB_PASSWORD: auth_password
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      # 如果您的应用还需要其他环境变量，请在此处添加
+      DB_NAME: student_db
+      DB_USER: postgres
+      DB_PASSWORD: mypassword
       
-    # 挂载卷：建议在开发时开启，方便热重载
+    # Volume for development (optional)
     # volumes:
     #   - .:/app
 
-  # --- 数据库服务 (PostgreSQL) ---
+  # --- Database Service (PostgreSQL) ---
   db:
     image: postgres:16-alpine
-    container_name: assignment4-db
+    container_name: assignment3-db
     restart: always
     
-    # 🌟 关键：配置数据库和角色，解决 FATAL 错误
+    # Database initialization settings
     environment:
-      POSTGRES_DB: auth_db
-      POSTGRES_USER: auth_user
-      POSTGRES_PASSWORD: auth_password
+      POSTGRES_DB: student_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: mypassword
       
-    # 数据卷：持久化数据库数据
+    # Persist database data
     volumes:
       - pgdata:/var/lib/postgresql/data
-      
-  # --- 缓存服务 (Redis) ---
-  redis:
-    image: redis:7-alpine
-    container_name: assignment4-redis
-    restart: always
-    
-    # 数据卷 (如果需要持久化 Redis 数据)
-    volumes:
-      - redisdata:/data
 
-# --- 定义数据卷 ---
+# --- Volumes Definition ---
 volumes:
   pgdata:
-  redisdata:

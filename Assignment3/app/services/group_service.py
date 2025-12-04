@@ -1,8 +1,8 @@
 # Assignment3/app/services/group_service.py
 from sqlalchemy.orm import Session
-from db import models
-from db import schemas
 from typing import List, Optional
+from ..db import models
+from ..db import schemas
 
 # --- Создать группу ---
 

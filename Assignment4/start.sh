@@ -1,10 +1,9 @@
 #!/bin/bash
 # start.sh
 
-# 在 Alpine 基础镜像中，为了使用 pg_isready，我们需要安装 postgresql-client。
-# 但是您的基础镜像是 python:3.11-slim-buster，我们先使用 Python 自己的重试逻辑。
+# We are using python:3.11-slim-buster.
+# Use Python's retry logic to wait for the database.
 
-# 确保 PostgreSQL 启动并创建表
 echo "Waiting for PostgreSQL database to be ready and creating tables..."
 python -c '
 import asyncio
@@ -34,6 +33,6 @@ if __name__ == "__main__":
     asyncio.run(create_tables_with_retry())
 '
 
-# 启动 Uvicorn 服务器
+# Start Uvicorn server
 echo "Starting Uvicorn..."
-exec uvicorn main:app --host 0.0.0.0 --port 8000
+exec uvicorn app.main:app --host 0.0.0.0 --port 8000

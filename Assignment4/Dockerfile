@@ -1,17 +1,18 @@
 FROM python:3.11-slim-buster
 
-# 目标工作目录
 WORKDIR /app
 
-# 复制依赖文件并安装
+# Copy requirements and install dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 复制整个项目代码到容器的 /app 目录
-# 这一步会创建 /app/app 目录，包含您的 Python 文件
+# Copy application code
 COPY . .
 
-# 暴露 FastAPI 运行的端口
 EXPOSE 8000
 
-# 保持 CMD 留空，让 docker-compose 控制
+# Make start script executable (optional, if you use it)
+RUN chmod +x start.sh
+
+# Default command (can be overridden by docker-compose)
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
