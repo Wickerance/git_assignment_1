@@ -1,0 +1,50 @@
+services:
+  # --- Application Service (FastAPI) ---
+  student_app:
+    # Points to your specific Dockerfile
+    build:
+      context: .
+      dockerfile: Dockerfile.final
+      
+    container_name: assignment3-student-app
+    
+    # Ensure DB is ready before starting app
+    depends_on:
+      - db
+      
+    # Port mapping: Host:Container
+    ports:
+      - "8000:8000"
+      
+    restart: always
+    
+    # Environment variables (Matching .env)
+    environment:
+      DB_HOST: db
+      DB_NAME: student_db
+      DB_USER: postgres
+      DB_PASSWORD: mypassword
+      
+    # Volume for development (optional)
+    # volumes:
+    #   - .:/app
+
+  # --- Database Service (PostgreSQL) ---
+  db:
+    image: postgres:16-alpine
+    container_name: assignment3-db
+    restart: always
+    
+    # Database initialization settings
+    environment:
+      POSTGRES_DB: student_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: mypassword
+      
+    # Persist database data
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+# --- Volumes Definition ---
+volumes:
+  pgdata:

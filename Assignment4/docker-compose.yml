@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  # --- 1. PostgreSQL Service (assignment4-db) ---
+  assignment4-db:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      # Default database user and password
+      POSTGRES_USER: auth_user
+      POSTGRES_PASSWORD: auth_secure_pass
+      POSTGRES_DB: auth_service_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    healthcheck: # Health check to ensure DB is ready
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # --- 2. Redis Service (assignment4-redis) ---
+  assignment4-redis:
+    image: redis:7-alpine
+    restart: always
+    ports:
+      - "6379:6379"
+
+  # --- 3. FastAPI Auth Service (assignment4-auth_app) ---
+  assignment4-auth_app:
+    build: .
+    restart: always
+    environment:
+      # Connection params passed to app, must match DB service values
+      DB_HOST: assignment4-db
+      REDIS_HOST: assignment4-redis
+      
+      POSTGRES_USER: auth_user       
+      POSTGRES_PASSWORD: auth_secure_pass   
+      POSTGRES_DB: auth_service_db           
+      DB_PORT: 5432                 
+      
+      # JWT Secrets (Ensure these match .env)
+      SECRET_KEY: YOUR_SUPER_SECURE_JWT_KEY_4_AUTH_SERVICE
+      
+    ports:
+      - "8000:8000"
+    depends_on:
+      assignment4-db:
+        condition: service_healthy # Start only after DB is healthy
+      assignment4-redis:
+        condition: service_started
+    
+    volumes:
+      # Mount local code into container
+      - ./app:/app/app
+    
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    
+# --- Volume Definitions ---
+volumes:
+  postgres_data:

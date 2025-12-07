@@ -1,0 +1,23 @@
+FROM python:3.11-slim-buster
+
+# 1. Install necessary system dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends gcc python3-dev libpq-dev && \
+    rm -rf /var/lib/apt/lists/*
+
+# 2. Set working directory
+WORKDIR /usr/src/app
+
+# 3. Copy requirements and install
+COPY requirements.txt .
+# FORCE REBUILD 20251106_1930 - Ensure cache invalidation for pip install
+RUN pip install --no-cache-dir -r requirements.txt
+
+# 4. Copy application code
+COPY . .
+
+# 5. Expose port
+EXPOSE 8000
+
+# 6. Start Gunicorn/Uvicorn service
+CMD ["gunicorn", "app.main:app", "--bind", "0.0.0.0:8000", "-k", "uvicorn.workers.UvicornWorker", "--workers", "4"]
